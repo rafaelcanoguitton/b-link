@@ -51,7 +51,7 @@ class BLinkTree {
       if (empty())
           return false;
       BlinkNode<B,data_type>* leafy;
-      data_type unnecessary_copy=value;
+      //data_type unnecessary_copy=value;
       //search_priv(leafy,traversal,unnecessary_copy);
       leafy = root;
       while (!leafy->is_leaf) {
