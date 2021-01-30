@@ -51,20 +51,8 @@ class BLinkTree {
       if (empty())
           return false;
       BlinkNode<B,data_type>* leafy;
-      //data_type unnecessary_copy=value;
-      //search_priv(leafy,traversal,unnecessary_copy);
+      search_no_path(leafy,value);
       leafy = root;
-      while (!leafy->is_leaf) {
-          int quan = leafy->keys.size();
-          for (int i = 0; i < quan; i++) {
-              if (value < *leafy->keys[i]) {
-                  leafy = leafy->pointers[i];
-                  break;
-              }
-              if (i == quan - 1)
-              leafy = leafy->pointers[i + 1];
-          }
-      }
       for(int i=0;i<leafy->keys.size();i++)
       {
           if(*leafy->keys[i]==value)
@@ -82,7 +70,7 @@ class BLinkTree {
       data_type curr_value=value;
       std::vector<BlinkNode<B,data_type>*> traversal;
       BlinkNode<B,data_type>* leafy;
-      search_priv(leafy, traversal,value);
+      search_w_path(leafy, traversal, value);
       BlinkNode<B,data_type>* to_be;
       while(true)
       {
@@ -101,6 +89,7 @@ class BLinkTree {
                   std::vector<data_type*> temp_1;
                   std::vector<data_type*> temp2;
                   int count_aux=goes_up;
+                  curr_value=*leafy->keys[goes_up];
                   while((leafy->m)>count_aux)
                   {
                       temp_1.push_back(leafy->keys[count_aux]);
@@ -117,10 +106,9 @@ class BLinkTree {
                   leafy->linked_list=temp;
                   BlinkNode<B,data_type>* inmediate_next;
                   std::vector<BlinkNode<B,data_type>*> unnecessary;
-                  search_priv(inmediate_next,unnecessary,curr_value+1);
+                  search_w_path(inmediate_next, unnecessary, curr_value + 1);
                   if(leafy!=inmediate_next)
                       leafy->linked_list=inmediate_next;
-                  curr_value=*temp->keys[0];
                   if(leafy=root)
                   {
                       auto* temp_root = new BlinkNode<B,data_type>;
@@ -135,6 +123,9 @@ class BLinkTree {
               }
               else //if node isn't a leaf
               {
+                  //Reordering pointers, it's done first since
+                  //the only case when we're inserting on a leaf is
+                  //if there's an overflow
                   //auto it = find(leafy->keys.begin(),leafy->keys.end(),&curr_value); //I don't know how to make this work
                   //int index=it-leafy->keys.begin();
                   int index;
@@ -153,9 +144,9 @@ class BLinkTree {
                   auto* temp = new BlinkNode<B,data_type>;
                   std::vector<data_type*> temp_1;//keys-right
                   std::vector<data_type*> temp2;//keys-left
-                  temp->is_leaf=false;
                   int count_aux=goes_up;
                   curr_value=*leafy->keys[goes_up];
+                  temp->is_leaf=false;
                   count_aux++;
                   while((leafy->m)>count_aux)
                   {
@@ -217,7 +208,13 @@ class BLinkTree {
 
  private:
     BlinkNode<B,data_type>* root;
-  void search_priv(BlinkNode<B,data_type>* &leafy,std::vector<BlinkNode<B,data_type>*> &traversal,data_type value) {
+
+
+//  This function searches the tree for a value and stores leaf in which
+//  such value needs to go and also stores it's traversal across the tree. Both
+//  of these being received as reference arguments so that they can be used in further
+//  operations.
+  void search_w_path(BlinkNode<B,data_type>* &leafy, std::vector<BlinkNode<B,data_type>*> &traversal, data_type value) {
       leafy = root;
       while (!leafy->is_leaf) {
           int quan = leafy->keys.size();
@@ -233,6 +230,23 @@ class BLinkTree {
           }
       }
   }
+//  This function searches the tree for a value and stores leaf in which
+//  such value needs to go.
+void search_no_path(BlinkNode<B,data_type>* &leafy, data_type value)
+    {
+        leafy = root;
+        while (!leafy->is_leaf) {
+            int quan = leafy->keys.size();
+            for (int i = 0; i < quan; i++) {
+                if (value < *leafy->keys[i]) {
+                    leafy = leafy->pointers[i];
+                    break;
+                }
+                if (i == quan - 1)
+                leafy = leafy->pointers[i + 1];
+            }
+        }
+    }
 };
 
 }  // namespace Concurrent
