@@ -214,7 +214,7 @@ class BLinkTree {
 //  such value needs to go and also stores it's traversal across the tree. Both
 //  of these being received as reference arguments so that they can be used in further
 //  operations.
-  void search_w_path(BlinkNode<B,data_type>* &leafy, std::vector<BlinkNode<B,data_type>*> &traversal, data_type value) {
+  void search_w_path(BlinkNode<B,data_type>* &leafy, std::vector<BlinkNode<B,data_type>*> &traversal, data_type value) const {
       leafy = root;
       while (!leafy->is_leaf) {
           int quan = leafy->keys.size();
@@ -232,7 +232,7 @@ class BLinkTree {
   }
 //  This function searches the tree for a value and stores leaf in which
 //  such value needs to go.
-void search_no_path(BlinkNode<B,data_type>* &leafy, data_type value)
+void search_no_path(BlinkNode<B,data_type>* &leafy, data_type value) const
     {
         leafy = root;
         while (!leafy->is_leaf) {
