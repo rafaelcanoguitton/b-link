@@ -78,7 +78,7 @@ void parallel_search(EDA::Concurrent::BLinkTree<3, int> *b_link) {
 
 void run_parallel_asynchronous_test() {
   EDA::Concurrent::BLinkTree<3, int> b_link;
-
+  //demo
   std::thread *insert_threads = new std::thread[NUMBER_THREADS];
   std::thread *search_threads = new std::thread[NUMBER_THREADS];
 

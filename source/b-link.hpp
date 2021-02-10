@@ -146,6 +146,7 @@ class BLinkTree {
               *p=curr_value;
               leafy->keys.push_back(p);
               std::sort(leafy->keys.begin(),leafy->keys.end(),comparison<data_type>);
+              //demo
               if(leafy->is_leaf)//if node is a leaf
               {
                   auto* temp = new BlinkNode<B,data_type>;
@@ -280,9 +281,9 @@ class BLinkTree {
 //  of these being received as reference arguments so that they can be used in further
 //  operations.
   void search_w_path(BlinkNode<B,data_type>* &leafy, std::vector<BlinkNode<B,data_type>*> &traversal, data_type value) const {
-      std::cout<<"am jir"<<std::endl;
       leafy = root;
       while (!leafy->is_leaf) {
+          // For when a split happened.
           if(value>*leafy->keys.back()&&leafy->linked_list)
               leafy=leafy->linked_list;
           else{
