@@ -25,8 +25,8 @@ class TreeSearcher {
   void operator()() {
     std::uniform_int_distribution<int> distribution(MIN_VALUE, MAX_VALUE);
     for (std::size_t i = 0; i < NUMBER_OPERATIONS; ++i) {
-      std::cout << distribution(rd) << "\n";
-      // b_link_->search(distribution(rd));
+      //std::cout << distribution(rd) << "\n";
+       b_link_->search(distribution(rd));
     }
   }
 
@@ -38,8 +38,8 @@ class TreeSearcher {
 void sequential_insert(EDA::Concurrent::BLinkTree<3, int> *b_link) {
   std::uniform_int_distribution<int> distribution(MIN_VALUE, MAX_VALUE);
   for (std::size_t i = 0; i < NUMBER_OPERATIONS; ++i) {
-    std::cout << distribution(rd) << "\n";
-    // b_link->insert(distribution(rd));
+    //std::cout << distribution(rd) << "\n";
+     b_link->insert(distribution(rd));
   }
 }
 
@@ -62,8 +62,8 @@ void parallel_insert(EDA::Concurrent::BLinkTree<3, int> *b_link) {
   std::uniform_int_distribution<int> distribution(MIN_VALUE, MAX_VALUE);
   for (std::size_t i = 0; i < NUMBER_OPERATIONS; ++i) {
     int value = distribution(rd);
-    std::cout << value << "\n";
-    // b_link->insert(value);
+    //std::cout << value << "\n";
+     b_link->insert(value);
   }
 }
 
@@ -71,8 +71,8 @@ void parallel_search(EDA::Concurrent::BLinkTree<3, int> *b_link) {
   std::uniform_int_distribution<int> distribution(MIN_VALUE, MAX_VALUE);
   for (std::size_t i = 0; i < NUMBER_OPERATIONS; ++i) {
     int value = distribution(rd);
-    std::cout << value << "\n";
-    // b_link->search(value);
+    //std::cout << value << "\n";
+     b_link->search(value);
   }
 }
 
@@ -101,7 +101,7 @@ void insert_and_notify(EDA::Concurrent::BLinkTree<3, int> *b_link, int id) {
   for (std::size_t i = 0; i < NUMBER_OPERATIONS; ++i) {
     std::unique_lock<std::mutex> lock(MUTEX[id]);
     int value = distribution(rd);
-    // b_link->insert(value);
+     b_link->insert(value);
     LAST_VALUE_INSERTED[id] = value;
     VALUE_INSERTED[id].notify_one();
   }

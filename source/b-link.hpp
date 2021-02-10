@@ -7,19 +7,29 @@
 #include <algorithm>
 template <class T>
 bool comparison(T* a,T* b) { return *a<*b;}
-namespace EDA {
-namespace Concurrent {
+namespace EDA::Concurrent {
 template <std::size_t B,typename Type>
 class BlinkNode{
 public:
     BlinkNode(){
-        is_leaf= true;
+        is_leaf=true;
+        linked_list=nullptr;
         m=B;
     }
-    ~BlinkNode(){}
+    ~BlinkNode(){
+        for(int i=0;i<keys.size();i++)
+        {
+            delete keys[i];
+        }
+        for(int i=0;i<pointers.size();i++)
+        {
+            delete pointers[i];
+        }
+    }
     typedef Type data_type;
     std::vector<data_type*> keys;
     std::vector<BlinkNode*> pointers;
+    std::mutex node_mutex;
     bool is_leaf;
     BlinkNode* linked_list;
     int m;
@@ -33,17 +43,18 @@ template <std::size_t B, typename Type>
 class BLinkTree {
  public:
   typedef Type data_type;
+  std::mutex aux_mutex;
   BLinkTree() {
       root=NULL;
   }
   ~BLinkTree() {}
 
-  std::size_t size() const {}
+  std::size_t size() const {
+      return B;
+  }
 
   bool empty() const {
-      if(!root)
-          return true;
-      else if(root->keys.empty())
+      if(!root||root->keys.empty())
           return true;
       return false;
   }
@@ -61,19 +72,71 @@ class BLinkTree {
       return false;
   }
   void insert(const data_type& value) {
+      aux_mutex.lock();
       if(root==NULL)
       {
           root= new BlinkNode<B,data_type>;
           root->insert(value);
+          aux_mutex.unlock();
           return;
       }
+      aux_mutex.unlock();
       data_type curr_value=value;
       std::vector<BlinkNode<B,data_type>*> traversal;
       BlinkNode<B,data_type>* leafy;
       search_w_path(leafy, traversal, value);
+      //So no keys get repeated::::::
+      for(int i=0;i<leafy->keys.size();i++)
+      {
+          if(*leafy->keys[i]==value)
+              return;
+      }
       BlinkNode<B,data_type>* to_be;
       while(true)
       {
+          std::unique_lock<std::mutex> w_lock(leafy->node_mutex);
+          //"What are the odds" situation
+          //--------------------------------------------------
+          //Which is actually very possible
+          //When you've done nothing but overflows but haven't reached the root
+          //this means that any of the root's children have produced one or more
+          //overflows
+          //so construct new traversal
+          if(traversal.empty()&&leafy!=root)
+          {
+              BlinkNode<B,data_type>* aux_node=root;
+              while (aux_node!=leafy) {
+                  if(leafy->keys[0]>aux_node->keys.back()&&aux_node->linked_list)
+                      aux_node=aux_node->linked_list;
+                  else
+                  {
+                      int quan = aux_node->keys.size();
+                      for (int i = 0; i < quan; i++) {
+                          if (*leafy->keys[0] < *aux_node->keys[i]) {
+                              traversal.push_back(aux_node);
+                              aux_node = aux_node->pointers[i];
+                              break;
+                          }
+                          if (i == quan - 1)
+                              traversal.push_back(aux_node);
+                          if(!aux_node->pointers.empty())
+                              aux_node = aux_node->pointers[i + 1];
+                      }
+                  }
+              }
+          }
+          //Never tell me the odds
+
+          //If there has been a split while we were traversing
+          // and we need to insert something
+          while(curr_value>*leafy->keys.back()&&leafy->linked_list)
+          {
+              w_lock.unlock();
+              leafy=leafy->linked_list;
+              w_lock.release();
+              w_lock=std::unique_lock<std::mutex>(leafy->node_mutex);
+              //w_lock.lock();
+          }
           if(leafy->keys.size()==(leafy->m)-1)//there_is_an_overflow
           {
               int goes_up=((leafy->m)/2);
@@ -103,13 +166,9 @@ class BLinkTree {
                       count_aux++;
                   }
                   leafy->keys=temp2;
+                  temp->linked_list=leafy->linked_list;
                   leafy->linked_list=temp;
-                  BlinkNode<B,data_type>* inmediate_next;
-                  std::vector<BlinkNode<B,data_type>*> unnecessary;
-                  search_w_path(inmediate_next, unnecessary, curr_value + 1);
-                  if(leafy!=inmediate_next)
-                      leafy->linked_list=inmediate_next;
-                  if(leafy=root)
+                  if(leafy==root)
                   {
                       auto* temp_root = new BlinkNode<B,data_type>;
                       temp_root->insert(curr_value);
@@ -118,8 +177,12 @@ class BLinkTree {
                       return;
                   }
                   to_be=temp;
-                  leafy=traversal.back();
-                  traversal.pop_back();
+                  //FIX TEMPORAL PA PROBAR
+                  if(!traversal.empty())
+                  {
+                      leafy=traversal.back();
+                      traversal.pop_back();
+                  }
               }
               else //if node isn't a leaf
               {
@@ -161,20 +224,23 @@ class BLinkTree {
                       count_aux++;
                   }
                   leafy->keys=temp2;
+                  temp->linked_list=leafy->linked_list;
                   leafy->linked_list=temp;
                   to_be=temp;
-                  if(leafy=root)
+                  if(leafy==root)
                   {
                       auto* temp_root = new BlinkNode<B,data_type>;
                       temp_root->insert(curr_value);
                       temp_root->pointers.push_back(leafy);
                       temp_root->pointers.push_back(temp);
+                      //never reaches this scope
                       return;
                   }
                   leafy=traversal.back();
                   traversal.pop_back();
 
               }
+              w_lock.unlock();
           }
           else//there_is_no_overflow
           {
@@ -200,6 +266,7 @@ class BLinkTree {
                       pun_de.push_back(leafy->pointers[i]);
                   }
               }
+              w_lock.unlock();
               return;
           }
       }
@@ -208,25 +275,28 @@ class BLinkTree {
 
  private:
     BlinkNode<B,data_type>* root;
-
-
 //  This function searches the tree for a value and stores leaf in which
 //  such value needs to go and also stores it's traversal across the tree. Both
 //  of these being received as reference arguments so that they can be used in further
 //  operations.
   void search_w_path(BlinkNode<B,data_type>* &leafy, std::vector<BlinkNode<B,data_type>*> &traversal, data_type value) const {
+      std::cout<<"am jir"<<std::endl;
       leafy = root;
       while (!leafy->is_leaf) {
-          int quan = leafy->keys.size();
-          for (int i = 0; i < quan; i++) {
-              if (value < *leafy->keys[i]) {
-                  traversal.push_back(leafy);
-                  leafy = leafy->pointers[i];
-                  break;
-              }
-              if (i == quan - 1)
-                  traversal.push_back(leafy);
+          if(value>*leafy->keys.back()&&leafy->linked_list)
+              leafy=leafy->linked_list;
+          else{
+              int quan = leafy->keys.size();
+              for (int i = 0; i < quan; i++) {
+                  if (value < *leafy->keys[i]) {
+                      traversal.push_back(leafy);
+                      leafy = leafy->pointers[i];
+                      break;
+                  }
+                  if (i == quan - 1)
+                      traversal.push_back(leafy);
                   leafy = leafy->pointers[i + 1];
+              }
           }
       }
   }
@@ -235,21 +305,38 @@ class BLinkTree {
 void search_no_path(BlinkNode<B,data_type>* &leafy, data_type value) const
     {
         leafy = root;
-        while (!leafy->is_leaf) {
-            int quan = leafy->keys.size();
-            for (int i = 0; i < quan; i++) {
-                if (value < *leafy->keys[i]) {
-                    leafy = leafy->pointers[i];
-                    break;
+        while (!(leafy->is_leaf)) {
+            if(value>*leafy->keys.back()&&leafy->linked_list)
+                leafy=leafy->linked_list;
+            else{
+                int quan = leafy->keys.size();
+                for (int i = 0; i < quan; i++) {
+                    if (value < *leafy->keys[i]) {
+                        leafy = leafy->pointers[i];
+                        break;
+                    }
+                    if (i == quan - 1)
+                        leafy = leafy->pointers[i + 1];
                 }
-                if (i == quan - 1)
-                leafy = leafy->pointers[i + 1];
             }
         }
     }
+    void recursive_deleterino(BlinkNode<B,data_type>* &pointer)
+    {
+      for(int i=0;i<pointer->pointers.size();i++)
+      {
+          if(pointer->pointers[i])
+          {
+              recursive_deleterino(pointer->pointers[i]);
+          }
+          else
+              break;
+      }
+      pointer->~BlinkNode();
+    }
 };
 
-}  // namespace Concurrent
+
 }  // namespace EDA
 
 #endif  // SOURCE_B_LINK_HPP_
