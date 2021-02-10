@@ -146,7 +146,6 @@ class BLinkTree {
               *p=curr_value;
               leafy->keys.push_back(p);
               std::sort(leafy->keys.begin(),leafy->keys.end(),comparison<data_type>);
-              //demo
               if(leafy->is_leaf)//if node is a leaf
               {
                   auto* temp = new BlinkNode<B,data_type>;
